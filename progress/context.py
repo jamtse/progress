@@ -41,11 +41,11 @@ class Context:
     def reset(cls):
         cls.__global_perf_start = time.perf_counter_ns()
         cls.__global_process_start = time.process_time_ns()
+        with cls.__global_id_counter_mutex:
+            cls.__global_id_counter = 0
         cls.__global_context = {
             threading.current_thread().name: [Context("Main")]
         }
-        with cls.__global_id_counter_mutex:
-            cls.__global_id_counter = 0
     
     @classmethod
     def get_global_perf_elapsed(cls) -> int:
