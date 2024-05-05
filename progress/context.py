@@ -104,6 +104,16 @@ class Context:
             return wrapper
         return decorator
 
+    @classmethod
+    def wrap(cls, func):
+        name = func.__name__
+        @wraps(func)
+        def wrapper(*arg, **args):
+            with Context(name):
+                ret = func(*arg, **args)
+            return ret
+        
+        return wrapper
     
     def closed(self) -> bool:
         return self.end_perf is not None

@@ -61,3 +61,21 @@ class TestProgress(unittest.TestCase):
         data = "APA"
         ret = decorated(data)
         self.assertEqual(data, ret)
+
+    def test_function_wrapper(self):
+        def function_for_test(input: str) -> str:
+            self.assertEqual("function_for_test", progress.Context.get_current_context().name)
+            return input
+        
+        data = "information"
+        ret = progress.Context.wrap(function_for_test)(data)
+        self.assertEqual(data, ret)
+
+    def test_decorator_as_wrapper(self):
+        def function_for_test(input: str) -> str:
+            self.assertEqual("another_name", progress.Context.get_current_context().name)
+            return input
+        
+        data = "information"
+        ret = progress.Context.decorate(name="another_name")(function_for_test)(data)
+        self.assertEqual(data, ret)
