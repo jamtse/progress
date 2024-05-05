@@ -1,4 +1,4 @@
-Progress (WIP)
+# Progress (WIP)
 
 Library for taking context based time meassurments and probably graphing it..
 
@@ -34,6 +34,20 @@ Planning to have a look at plotly to see if I can set something like this up:
 |_Main_____________________________________|
 ```
 
-There probably is somethng similar out there, possibly log based, but for now I can't find it. For when you don't want a full on profiling, but something more structured, I guess.
+Working title, both progress and context already taken on pypi..
 
-Not sure yet if I want to somehow also tie this into progress logs of some kind.
+## Alternatives
+
+### context
+
+The most similar project to this one is probably [context](https://pypi.org/project/context/) which I would describe as a manual profiler, with a focus on a common visualizer for multiple languages. It is based on logging start and end times in a specific format.
+
+The python library is very light weight, adding a decorator to log start and stop of function calls. If this is all you want, it is probably a good alternative.
+
+This project will probably support the same log format to be compatible with that visualizer.
+
+Currently taking a step back to see if this project actually is different enough to justify it's existence. Context isn't exactly in line with this project, but I need to be explicit with what this project should achieve.
+
+### Others..
+
+There are more libraries than I care to count that adds a context manager, or a descriptor, to either print time elapsed in a more or less advanced manner. But if that is all that is needed, just re-inventing the wheel is better than adding a dependency in my opinion.
