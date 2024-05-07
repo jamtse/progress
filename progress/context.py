@@ -8,6 +8,7 @@ from typing import Dict, List, Optional
 class Context:
     # class variables
     __global_perf_start = time.perf_counter_ns()
+    # TODO switch to thread_time_ns and probably get rid of the global
     __global_process_start = time.process_time_ns()
     __global_context: Dict[str, List["Context"]] = {}
     __global_id_counter = 0

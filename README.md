@@ -70,3 +70,63 @@ Currently taking a step back to see if this project actually is different enough
 ### Others..
 
 There are more libraries than I care to count that adds a context manager, or a descriptor, to either print time elapsed in a more or less advanced manner. But if that is all that is needed, just re-inventing the wheel is better than adding a dependency in my opinion.
+
+## Design (WIP)
+
+Python_app -> Context_log_file (dump_at_end/live) (Compatible with context viewer ideally)
+Python_app -> Human readable text tree visualization (dump at end/live?)
+
+Python_app -> Server_thread (live)
+Server_thread -> server_side_events # only accept one client
+Browser <- Server_side_events
+
+### Python_app
+
+The monitored application introduces the decorators etc. which appends data to a log file.
+
+It can also optionally spawn a background `Server_app` with `Popen` and call `webbrowser.open()` on a local html file. to present the data live without affecting the performance of the application needlessly (That said, it probably wouldn't be much of a performance hit to send the data as it becomes available over a socket instead of writing to file).
+
+### Server_thread
+
+A simple socket server which listens for one connection at a time and then serves a http response for server side events. It proceeds to serve all events that has happened so far and then waiting for more data to be appended by keeping the file open for reading, ignoring the EOF exception.
+
+For this simple use case there should be no reason to bother with what the client asks for, just throw away all client data and serve something like:
+
+```
+HTTP/1.1 200 OK
+Server: Identifier for the server/make something up or skip it
+X-Accel-Buffering: no
+Content-Type: text/event-stream
+Cache-Control: no-cache
+
+Start of event data separated by double newlines
+```
+
+May likely need `access-control-allow-origin` as well to specify that localhost may use the data source in scripts. null can be used if we are serving a local file. potentially we could also serve the web page this way.. but there is some risk of actually having to read what the client wants then (otherwise we could confuse a request for favicon with the request for the stream)
+
+Note that newlines should be CRLF according to spec
+Also note that below HTTP/2 the maximum amount of connections between the browser and a server is 6. In HTTP/2 this would be negotiated (or defaulted to 100). It's probably not an issue for this use case, so just go with 1.1 initially.
+
+Input file and port taken as arguments
+
+### Browser
+
+A static web page which uses serverside events to get the state of the execution and present that as a graph which updates regularely (more often then the events, as time passes, non terminated contexts will need to grow)
+
+Can be implemented with javascript or wasm
+
+```JS
+const evtSource = new EventSource("//localhost:<port>")
+
+evtSource.onmessage = (event) => { do something with event.data };
+```
+
+Could also make use of the event field could also use `.addEventListener("name_of_event", (event) => {});` Might be useful.
+
+### Syncing
+
+Need to communicate the port to the static web page somehow, or decide on a static one.
+
+### Overhead considerations
+
+There will always be overhead of some kind, either from writing to file or storing in memory. I'm making the assumption that this won't be used on pieces of code that are called millions of times, so I'm betting on storing it in memory for the time beeing (the live scenarios don't technically need this, I could poll a file from a separate application).
