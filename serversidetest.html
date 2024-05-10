@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  </head>
+  <body>
+  <h2> Serverside events test</h2>
+  <p id="data"></p>
+  <script>
+  	const eventSource = new EventSource("http://localhost:12345/")
+  	eventSource.onmessage = (event) => {
+  		console.log("Got message");
+  		const target = document.getElementById("data");
+  		target.innerHTML = `message: ${event.data}`;
+  	};
+  	eventSource.addEventListener("update", (event) => {
+  		console.log("Got update");
+  		const target = document.getElementById("data");
+  		target.innerHTML = `message: ${event.data}`;
+  	});
+  </script>
+  </body>
+</html>
