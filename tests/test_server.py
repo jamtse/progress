@@ -12,24 +12,41 @@ from progress.server import ProgressServer
 
 class TestProgressServer(unittest.TestCase):
     def test_start_stop(self):
-        port = int(random.random()*1000) + 34567
-        server = ProgressServer(port)
+        server = ProgressServer(open_browser=None)
         server.start()
+        server.wait_until_ready()
+        port = server.port
         connection = socket.create_connection(("localhost", port), timeout=1)
+        connection.send(b"GET / HTTP/1.1\r\n\r\n")
         data = connection.recv(1024)
         self.assertIsNotNone(data)
         self.assertIn(b"200 OK", data)
         server.stop()
     
+    def test_event_stream(self):
+        server = ProgressServer(open_browser=None)
+        server.start()
+        server.wait_until_ready()
+        port = server.port
+        connection = socket.create_connection(("localhost", port), timeout=1)
+        connection.send(b"GET /events HTTP/1.1\r\n\r\n")
+        server.add_event("test")
+        time.sleep(0.1)  # if too fast, the event won't propagate in time
+        # Make sure we get past all the headers.
+        data = connection.recv(2048)
+        self.assertIn(b"data: test\n\n", data)
+        server.stop()
+        data = connection.recv(1024)
+        self.assertIn(b"event: abort\ndata: {\"reason\": \"shutdown\"}\n\n", data)
+
     @pytest.mark.manual
     def test_manual(self):
-        port = 12345
-        webbrowser.open("file://" + os.path.realpath("serversidetest.html"), new = 1)
-        server = ProgressServer(port)
+        server = ProgressServer(open_browser=1)
         server.start()
+        self.assertEqual(1, server.wait_until_ready(timeout=2))
         server.add_event("Data")
         counter = 0
-        while counter < 100:
+        while counter < 10:
             time.sleep(1)
             counter += 1
             server.add_event(f"count {counter}")

@@ -6,7 +6,7 @@
   <h2> Serverside events test</h2>
   <p id="data"></p>
   <script>
-  	const eventSource = new EventSource("http://localhost:12345/")
+  	const eventSource = new EventSource("/events")
   	eventSource.onmessage = (event) => {
   		console.log("Got message");
   		const target = document.getElementById("data");
@@ -16,6 +16,10 @@
   		console.log("Got update");
   		const target = document.getElementById("data");
   		target.innerHTML = `message: ${event.data}`;
+  	});
+	  eventSource.addEventListener("abort", (event) => {
+  		console.log(`Got abort: ${JSON.parse(event.data).reason}`);
+		eventSource.close();
   	});
   </script>
   </body>
