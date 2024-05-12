@@ -1,10 +1,14 @@
 import http.server
 import io
+import os
 import queue
 import random
 import socket
 import threading
 import webbrowser
+
+from pathlib import Path
+from typing import Dict, Optional, Union
 
 random.seed()
 
@@ -20,7 +24,7 @@ class ProgressServer(threading.Thread):
     Events are added on to a list that is never dropped, to allow
     re-connecting.
     """
-    def __init__(self, port = None, open_browser = 1) -> None:
+    def __init__(self, port = None, open_browser = 1, web_resources = None) -> None:
         """
 
         :param port: force use of specific port
@@ -37,6 +41,7 @@ class ProgressServer(threading.Thread):
         self.__queue = queue.SimpleQueue()
         self.__update_event = threading.Event()
         self.__browser = open_browser
+        self._web_resources = web_resources
         super().__init__(name="ProgressServer", daemon=True)
     
     @property
@@ -66,6 +71,7 @@ class ProgressServer(threading.Thread):
                 self.__handler,
                 self._event_loop,
                 bind_and_activate=True,
+                web_resources=self._web_resources,
                 )
         else:
             # Attempt several random ports in the private port range
@@ -78,6 +84,7 @@ class ProgressServer(threading.Thread):
                         self.__handler,
                         self._event_loop,
                         bind_and_activate=True,
+                        web_resources=self._web_resources,
                         )
                     break
                 except OSError as e:
@@ -185,10 +192,18 @@ class ThreadingProgressServer(http.server.ThreadingHTTPServer):
             server_address,
             RequestHandlerClass,
             event_loop_callback,
+            *,
+            web_resources: Optional[Dict[str, Union[Path, bytes]]] = None,
             bind_and_activate: bool = True,
             ) -> None:
         super().__init__(server_address, RequestHandlerClass, bind_and_activate)
         self._event_loop_callback = event_loop_callback
+        self._web_resources = {
+                # TODO replace, path to the root dir isn't functional in library
+                "/": Path(os.path.realpath("serversidetest.html"))
+            }
+        if web_resources is not None:
+            self._web_resources.update(web_resources)
 
 
 class ProgressServerHandler(http.server.BaseHTTPRequestHandler):
@@ -206,10 +221,11 @@ class ProgressServerHandler(http.server.BaseHTTPRequestHandler):
     def __handle_request(self, just_headers: bool):
         if self.path == "/events":
             self.__serve_event_stream(just_headers)
-        else:
+        elif self.path in self.server._web_resources:
             self.__serve_content(just_headers)
-        if just_headers:
-            return
+        else:
+            self.send_error(404, "Not Found")
+            self.end_headers()
         
     def __serve_event_stream(self, just_headers: bool):
         self.send_response(200, "OK")
@@ -229,13 +245,21 @@ class ProgressServerHandler(http.server.BaseHTTPRequestHandler):
             pass
     
     def __serve_content(self, just_headers: bool):
-        # TODO
+        resource = self.server._web_resources[self.path]
+        if isinstance(resource, Path):
+            if resource.is_file():
+                with open(resource, "rb") as fp:
+                    content = fp.read()
+            else:
+                self.send_error("500", "Internal server error")
+                self.end_headers()
+                raise Exception(f"Resource path for {self.path} is not a file: {resource}")
+        elif isinstance(resource, bytes):
+            content = resource
+        else:
+            raise Exception(f"Resource data for path {self.path} is not valid type: {type(resource)}")
         self.send_response(200, "OK")
         self.end_headers()
         if just_headers:
             return
-        else:
-            import os
-            with open(os.path.realpath("serversidetest.html"), "rb") as fp:
-                page = fp.read()
-            self.wfile.write(page)
+        self.wfile.write(content)

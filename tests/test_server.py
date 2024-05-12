@@ -38,6 +38,18 @@ class TestProgressServer(unittest.TestCase):
         server.stop()
         data = connection.recv(1024)
         self.assertIn(b"event: abort\ndata: {\"reason\": \"shutdown\"}\n\n", data)
+    
+    def test_custom_resource(self):
+        data = b"<html><body>Success</body></html>"
+        resources = {"/test": data}
+        server = ProgressServer(open_browser=None, web_resources=resources)
+        server.start()
+        server.wait_until_ready()
+        port = server.port
+        connection = socket.create_connection(("localhost", port), timeout=1)
+        connection.send(b"GET /test HTTP/1.1\r\n\r\n")
+        received = connection.recv(1024)
+        self.assertIn(data, received)
 
     @pytest.mark.manual
     def test_manual(self):
@@ -46,7 +58,7 @@ class TestProgressServer(unittest.TestCase):
         self.assertEqual(1, server.wait_until_ready(timeout=2))
         server.add_event("Data")
         counter = 0
-        while counter < 10:
+        while counter < 20:
             time.sleep(1)
             counter += 1
             server.add_event(f"count {counter}")
